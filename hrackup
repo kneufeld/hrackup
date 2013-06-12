@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+
+"""
+using rsync and hardlinks, make effecient backups.
+
+example exclude file:
+tmp/
+cache-release64/
+Cache/
+
+warning, this requires a patched plumbum and won't work for you
+see: https://github.com/kneufeld/plumbum/commit/ac49165cd7707d7d1d8d62ee66b134d830a98126
+"""
+
+import os,sys
+from os import path
+from plumbum.cmd import rsync, echo
+from plumbum import local, BG, FG
+import argparse
+import glob
+
+def not_a_dir( path, exit ):
+    sys.stderr.write( "error: file/directory does not exist: %s\n" % path )
+    if exit:
+        sys.exit(-1)
+
+def parse_cmdline( args ):
+    epilog = "backup a filesystem with rsync and hardlinks"
+    parser = argparse.ArgumentParser( description='backup a filesystem', epilog=epilog )
+    parser.add_argument( '-s', '--src', help="src directory/mount point", required=True )
+    parser.add_argument( '-d', '--dest', help="the destination dir. backup.N gets created in this dir", required=True)
+    parser.add_argument( '-v', dest='verbose', action='store_true', help="show progress as we backup" )
+    parser.add_argument( '-e', '--exclude', help="get exclude patterns from file. see rsync filter rules" )
+    parser.add_argument( '--dry', action='store_true', help="do a dry run" )
+    parser.add_argument( ' ' ) # argparse complains if it doesn't have positional args
+
+    opts = parser.parse_args( args )
+
+    if not os.path.isdir( opts.dest ):
+        not_a_dir( opts.dest, True )
+
+    if not os.path.isdir( opts.src ):
+        not_a_dir( opts.src, True )
+
+    if opts.dest[-1] != os.path.sep:
+        opts.dest += os.path.sep
+        
+    if opts.src[-1] != os.path.sep:
+        opts.src += os.path.sep
+
+    if opts.exclude and not os.path.isfile( opts.exclude ):
+        not_a_dir( opts.exclude, True )
+        
+    #print opts
+    return opts
+
+def prev_backup_num( dest ):
+    backups = glob.glob( path.join( dest, "backup." ) + "*" )
+    backups.sort()
+    assert path.isdir( backups[-1] )
+    n = backups[-1].rsplit('.',1)[-1] # the number at the end of the path
+    return n # note: n is a string
+
+def prev_backup( dest ):
+    n = prev_backup_num( dest )
+    return path.join( dest, "backup.%s" % n )
+
+def next_backup( dest ):
+    n = prev_backup_num( dest )
+    n = int(n) + 1
+    return path.join( dest, "backup.%d" % n )
+
+def backup( opts ):
+    # rsync -a --delete -x --progress --link-dest=../backup.0 /home/ .
+
+    args = []
+    args.append( "-a" )
+    args.append( "-x" )
+    args.append( "--delete" )
+
+    if opts.verbose:
+        args.append( "--progress" )
+
+    if opts.dry:
+        args.append( "--dry-run" )
+
+    if opts.exclude:
+        args.append( "--exclude-from=%s" % opts.exclude )
+
+    link = prev_backup( opts.dest )
+    dest = next_backup( opts.dest )
+
+    args.append( "--link-dest=%s" % link )
+    args.append( opts.src )
+    args.append( dest )
+
+    rsync[ args ] & FG
+
+if __name__ == "__main__":
+    opts = parse_cmdline( sys.argv )
+    backup( opts )
