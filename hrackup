@@ -14,7 +14,7 @@ see: https://github.com/kneufeld/plumbum/commit/ac49165cd7707d7d1d8d62ee66b134d8
 
 import os,sys
 from os import path
-from plumbum.cmd import rsync, echo
+from plumbum.cmd import rsync, echo, touch
 from plumbum import local, BG, FG
 import argparse
 import glob
@@ -95,6 +95,8 @@ def backup( opts ):
     args.append( dest )
 
     rsync[ args ] & FG
+    
+    touch( dest ) # show current date/time on directory
 
 if __name__ == "__main__":
     opts = parse_cmdline( sys.argv )
