@@ -18,6 +18,14 @@ from plumbum.cmd import rsync, echo, touch
 from plumbum import local, BG, FG
 import argparse
 import glob
+import re
+
+
+def natural_sort(l): 
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
+
 
 def not_a_dir( path, exit ):
     sys.stderr.write( "error: file/directory does not exist: %s\n" % path )
@@ -56,9 +64,9 @@ def parse_cmdline( args ):
 
 def prev_backup_num( dest ):
     backups = glob.glob( path.join( dest, "backup." ) + "*" )
-    backups.sort()
+    backups = natural_sort( backups )
     assert path.isdir( backups[-1] )
-    n = backups[-1].rsplit('.',1)[-1] # the number at the end of the path
+    backup,n = backups[-1].rsplit('.',1) # n is the number at the end of the path
     return n # note: n is a string
 
 def prev_backup( dest ):
