@@ -99,13 +99,18 @@ def backup( opts ):
     link = prev_backup( opts.dest )
     dest = next_backup( opts.dest )
 
+    if opts.dry or opts.verbose:
+        print "prev backup:", link
+        print "dest:", dest
+
     args.append( "--link-dest=%s" % link )
     args.append( opts.src )
     args.append( dest )
 
     rsync[ args ] & FG
-    
-    touch( dest ) # show current date/time on directory
+   
+    if not opts.dry:
+        touch( dest ) # show current date/time on directory
 
 if __name__ == "__main__":
     opts = parse_cmdline( sys.argv )
