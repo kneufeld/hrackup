@@ -3,6 +3,13 @@
 """
 using rsync and hardlinks, make effecient backups.
 
+by using hardlinks, very little hard disk space is used. However, an incredible amount
+of inodes are required (the ratio of inodes to disk space is very skewed) so I recomment
+formatting your drive with -N BIG_NUMBER. -N 25000000000 (25 million). You probably also
+want to make your inode size smaller -I 128.
+
+My "home" backup routinely runs out of inodes with 50% space still available.
+
 example exclude file:
 tmp/
 cache-release64/
